@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title> DublinBikes </title>
+    
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    
+    <script src="http://code.jquery.com/jquery-1.8.3.js"></script>
+    <script src="http://code.jquery.com/ui/1.9.2/jquery-ui.js"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">google.charts.load('current', {packages: ['corechart']});</script>
+
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.9.2/themes/base/jquery-ui.css" />
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" type="text/css" id="theme" href="{{ url_for('static', filename='css/theme-blue.css') }}"/>
+
+<script type="text/javascript">
+    
+//------------------ Static station information ------------------------//
+    function getStaticStationInfo() {
+        var static = JSON.parse({{ StationInfo.staticStation|tojson|safe }});
+        return static;
+    };
+    
+//------------------ Real time station information by day and hour ------------------------//
+    function getDynamicStationInfoDay() {
+        var dynamic_dh = JSON.parse({{ StationInfo.dynamicStation_d|tojson|safe }});
+        return dynamic_dh;
+    };
+
+//------------------ Real time station information by hour in average------------------------//
+    function getDynamicStationInfoHour() {
+        var dynamic_h = JSON.parse({{ StationInfo.dynamicStation_h|tojson|safe }});
+        return dynamic_h;
+    };
+    
+//------------------ Initialise google map ------------------------//
+    function initmap() {
+        var location = new google.maps.LatLng(53.349562,-6.278198);
+
+        var mapOptions = {
+            zoom: 15,
+            center: location,
+            streetViewControl: false,
+            scaleControl: true,
+            zoomControl: true,
+            zoomControlOptions: {
+                position: google.maps.ControlPosition.TOP_CENTER,
+                style: google.maps.ZoomControlStyle.LARGE
+            },
+            draggableCursor:'crosshair'
+        };
+        var map = new google.maps.Map(document.getElementById('map-canvas'),mapOptions);
+
+        //in parameter - stationCoord(object, structure is 0:"-6.30395")
+        setmarker(map);
+    }
+
+//------------------ Get query time ------------------------//
+    function getTime(){
+         
+        function addZero(i) {
+            if (i < 10) { i = "0" + i;}
+            return i;
+        }
+        
+        var now = new Date();
+        // Map to historyical data by Day
+        var mappingDate = ['03/26/17', '03/27/17', '03/28/17', '03/29/17', '03/30/17', '03/31/17', '04/01/17'];
+        
+        var queryTime = {
+            qDate : mappingDate[now.getDay()],
+            qTime :  addZero(now.getHours())
+        }
+        
+        return queryTime;
+        //console.log(queryDate);
+    }
+    
+//------------------ Return marker color ------------------------//
+    function markerColor(bikeStands, availBikes) {
+        
+        var Red =  '/static/img/markerRed.png';
+        var Blue = '/static/img/markerBlue.png' ;
+        var Green = '/static/img/markerGreen.png';
+ 
+        if (availBikes > (bikeStands * 2/3)) {
+            return Green; }
+        else if (availBikes > bikeStands/3) {
+            return Blue; }
+        else {
+            return Red; }
+    }
+    
+//------------------ Set map marker ------------------------//
+    function setmarker(map) {
+        
+        var Markers = [];
+        
+        //Get static station information
+        staticInfo = getStaticStationInfo();
+        //Get dynamic station information
+        dynamicInfo = getDynamicStationInfoDay();
+        //Query date info
+        queryDate = getTime();
+        
+        for(i in staticInfo.number) {
+            // Marker position
+            
+            var location = new google.maps.LatLng(staticInfo.latitude[i], staticInfo.longitude[i]);
+            
+            //Get marker color
+            var bikeStands = dynamicInfo[staticInfo.number[i]][queryDate.qDate + ' ' + queryDate.qTime]["bike_stands"];
+            var availableBikes = dynamicInfo[staticInfo.number[i]][queryDate.qDate + ' ' + queryDate.qTime]["available_bikes"];
+            var markerIcon = markerColor(bikeStands, availableBikes);
+
+            var marker = new google.maps.Marker({
+                position: location, 
+                map: map,
+                title: "number: " + staticInfo.number[i] + "",
+                icon: { url: markerIcon,
+                        scaledSize: new google.maps.Size(50, 50)
+                      }
+            });
+            
+            
+            
+            //************************ Marker infowindow ************************//
+            var infowindow = new google.maps.InfoWindow();
+            
+            google.maps.event.addListener(marker, 'click', (function(marker, i) {
+                return function() {
+                    
+                    var dateTemp = queryDate.qDate + ' ' + queryDate.qTime;                    
+                    var contentString = '<table class="table table-bordered table-striped"><tbody><tr><td><strong>Station Name: </strong></td><td><span class="label label-danger">' + staticInfo.name[i] + '</span></td></tr><tr><td><strong>Address</strong></td><td><span class="label label-warning">' + staticInfo.address[i] + '</span></td></tr><tr><td><strong>Status</strong></td><td><span class="label label-warning">' + staticInfo.status[i] + '</span></td></tr><tr><td><strong>Banking</strong></td><td><span class="label label-warning">' + staticInfo.banking[i] + '</span></td></tr><tr><td><strong>Bonus</strong></td><td><span class="label label-warning">' + staticInfo.bonus[i] + '</span></td></tr><tr><td><strong>Total avail bikes</strong></td><td><span class="label label-success">' + staticInfo.bike_stands[i] + '</span></td></tr><tr><td><strong>Available bikes</strong></td><td><span class="label label-success">' + dynamicInfo[staticInfo.number[i]][dateTemp]["available_bikes"]  + '</span></td></tr></tbody></table>';
+                    
+                    infowindow.setContent(contentString);
+                    infowindow.setOptions({minWidth: 400},{minHeight: 600});
+                    infowindow.open(map, marker);
+                    
+                    // Show chart here
+                    drawChart(dynamicInfo, queryDate.qDate, staticInfo.number[i]);
+                    
+			}})(marker, i));
+            
+            Markers.push(marker);
+        }
+    }
+    
+//------------------ Set chart ------------------------//
+    function drawChart(dynamicInfo, qDate, stationNumber) {
+        
+        // Get average available bikes by station by hour
+        var avgAvailBikes = getDynamicStationInfoHour();        
+        var tableArray = [['Hour', 'Available Bikes', 'Average']];
+        var i = 1;
+        
+        // Build the data array
+        for(var key in dynamicInfo[stationNumber]) {
+            if( key.slice(0,-3) == qDate ) {
+                //Column 1 as 'Hour'
+                tableArray.push([key.slice(-2)]);
+                //Column 2 as 'Available Bikes'
+                tableArray[i].push(dynamicInfo[stationNumber][key]['available_bikes']);
+                //Column 3 as 'Average'
+                tableArray[i].push(avgAvailBikes[stationNumber][tableArray[i][0]]['available_bikes']);
+                i++;
+            }
+        }
+        
+        var data = google.visualization.arrayToDataTable(tableArray);
+        
+        var options = {
+            title : 'Hourly available bikes of station: ' + staticInfo.name[stationNumber],
+            vAxis: {title: 'Hour'},
+            hAxis: {title: 'Avail Bikes'},
+            seriesType: 'bars',
+            series: {1: {type: 'line'}},
+            colors: ['#c9589e', '#9c6fe5'],
+        };
+        
+        var chart = new google.visualization.ComboChart(document.getElementById('chart_div'));
+        chart.draw(data, options);
+    }
+    
+//------------------ Initialise chart ------------------------//
+    google.charts.setOnLoadCallback(showChart);
+    function showChart() {
+        
+        //Get static station information
+        staticInfo = getStaticStationInfo();
+        
+        //Get dynamic station information
+        dynamicInfo = getDynamicStationInfoDay();
+        
+        var tableArray = [['station number', 'Bikes Stands']];
+        var i = 1;
+        for(var stationNumber in dynamicInfo) {
+            for(var d in dynamicInfo[stationNumber]) {
+                tableArray.push([stationNumber]);
+                tableArray[i].push(dynamicInfo[stationNumber][d]['bike_stands']);
+                i++;
+                break;
+            }   
+        }
+        
+        var data = google.visualization.arrayToDataTable(tableArray);
+
+        var options = {
+            title: "Number of bike stands of stations ",
+            width: "100%",
+            height: "100%",
+            bar: {groupWidth: "95%"}
+      };
+
+        var chart = new google.visualization.BarChart(document.getElementById('chart_div'));
+
+        chart.draw(data, options);
+      }
+    
+
+</script>
+
+</head>
+
+<body>
+ <!-- START PAGE CONTAINER -->
+<div class="page-container">
+       
+    <!-- START PAGE SIDEBAR -->
+    <div class="page-sidebar">
+        <!-- START X-NAVIGATION -->
+        <ul class="x-navigation">
+            <li class="xn-logo"></li>
+            <li class="xn-profile">
+                <div class="profile">
+                    <div class="profile-image">
+                        <!--Put weather img here-->
+                        <img id='weather-image'/>
+                    </div>    
+                </div>
+            </li>
+            <li class="xn-title"></li>
+            <li class="active">
+                <a href=""><span>  </span> <span class="xn-text">Location : Dublin</span></a>        
+            </li>
+            <li>
+                <a href="#"><span class="fa fa-sign-in"></span> <span class="xn-text">Weather Info</span></a>
+                <div>
+                    <ul>
+                        <li><a id="weather-main" href="#"></a></li>
+                        <li><a id="weather-desc" href="#"></a></li>
+                        <li><a id="weather-temp" href="#"></a></li>
+                        <li><a id="weather-temp-min" href="#"></a></li>
+                        <li><a id="weather-temp-max" href="#"></a></li>
+                        <li><a id="weather-press" href="#"></a></li>
+                        <li><a id="weather-humid" href="#"></a></li>
+                        <li><a id="weather-wind" href="#"></a></li>
+                        <li><a id="weather-cloud" href="#"></a></li>
+                    </ul>
+                </div>
+            </li>
+            
+        </ul>
+        <!-- END X-NAVIGATION -->
+    </div>
+    <!-- END PAGE SIDEBAR -->
+<!--#########################################################-->
+
+    <!-- PAGE CONTENT -->
+    <div class="page-content">
+        
+    <!-- START X-NAVIGATION VERTICAL -->
+    <ul class="x-navigation x-navigation-horizontal x-navigation-panel">
+        <li class="xn-icon-button">
+            <a href="#" class="x-navigation-minimize"><span></span></a>
+        </li>
+    </ul>
+    <!-- END X-NAVIGATION VERTICAL -->
+    
+    <!-- START BREADCRUMB -->
+    <ul class="breadcrumb">
+        <li><a href="#"></a></li>                    
+        <li class="active"></li>
+    </ul>
+    <!-- END BREADCRUMB -->      
+        
+     <!-- PAGE CONTENT WRAPPER -->
+    <div class="page-content-wrap">
+        
+        <!-- START GOOGEL MAP BLOCK -->
+        <div class="row">
+        
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <div class="panel-title-box">
+                            <h3>GOOGLE MAP</h3>
+                            <span>Occupancy by Station</span>    
+                    </div>
+                   
+                    </div>
+                    <div class="panel-body padding-0">
+                    <div class="chart-holder" id="dashboard-bar-1" style="height: 400px;">
+                        <div id="map-canvas"></div>
+                    </div>
+                    </div>  
+            </div>
+        </div>
+        </div>
+        <!-- END GOOGEL MAP BLOCK -->
+        
+        <!-- START STATISTICAL CHART BLOCK -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <div class="panel-title-box">
+                                <h3>STATISTICAL CHART</h3>
+                                <span>Hourly Information</span>
+                        </div>
+                        </div>
+                        <div class="panel-body padding-0">
+                        <div class="chart-holder" id="dashboard-bar-1" style="height: 300px;">
+                            <div id="chart_div" style="height: 300px;"></div>    
+                        </div>
+                    </div>  
+                </div>
+            </div>
+            <!-- END STATISTICAL CHART BLOCK -->
+        </div>
+        
+    </div>
+    <!-- END PAGE CONTENT WRAPPER --> 
+        
+    </div>            
+    <!-- END PAGE CONTENT -->
+    </div> 
+
+<!-- END PAGE CONTAINER -->
+    
+<!-- Google Map API -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD_ffoj_4RWL_SkxgeDkxEqIMT3COjr-9k&callback=initmap"></script>
+<!--Weather Information -->
+    
+<script>
+        $(document).ready(function() {
+        
+        var weather_api = 'http://api.openweathermap.org/data/2.5/weather?q=Dublin,IE&APPID=89b3e577901486c8ad601fab00edd389';
+        $.getJSON(weather_api, function(data) {  
+                    
+            document.getElementById("weather-image").src = "http://openweathermap.org/img/w/" + data.weather[0].icon + ".png";
+            document.getElementById("weather-main").innerHTML = data.weather[0].main;
+            document.getElementById("weather-desc").innerHTML = data.weather[0].description;
+            document.getElementById("weather-temp").innerHTML = 'Tempture: ' + data.main.temp;
+            document.getElementById("weather-temp-min").innerHTML = 'Min: ' + data.main.temp_min;
+            document.getElementById("weather-temp-max").innerHTML = 'Max: ' + data.main.temp_max;
+            document.getElementById("weather-press").innerHTML = 'Pressure: ' + data.main.pressure;
+            document.getElementById("weather-humid").innerHTML = 'Humidity: ' + data.main.humidity;
+            document.getElementById("weather-wind").innerHTML = 'Wind: ' + data.wind.speed;
+            document.getElementById("weather-cloud").innerHTML = 'Cloud: ' + data.clouds.all;
+
+            
+        });
+    });
+    
+</script>
+<!-- END SCRIPTS -->
+
+
+    </body>
+</html>
