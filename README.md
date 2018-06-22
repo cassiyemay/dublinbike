@@ -6,6 +6,8 @@ meeting notes in here https://trello.com/b/KAaZIGR8/dublinbikeproject
 
   1. data collection through API
   2. data manaement/stored in DB on AWS
+  
+  ![database structure](img-folder/database.png)
   3. display bike stations on map
   4. weather information
   5. occupancy information
