@@ -1,5 +1,6 @@
 # dublinbike
  AWS/Python/Linux/MySQL/Google map API/Google chart/Open weather API/JSON/flask/jinja2/Bootstrapt/JQuery
+AWS EC2 has been closed because the credit has expired, the outcome of web app would be displayed by pictures.
 
  Created a web applications to display occupancy and weather information for Dublinbike. Using Scrum management.
 meeting notes in here https://trello.com/b/KAaZIGR8/dublinbikeproject 
