@@ -9,5 +9,10 @@ meeting notes in here https://trello.com/b/KAaZIGR8/dublinbikeproject
   3. display bike stations on map
   4. weather information
   5. occupancy information
+  
+  
   6. project run on EC2
+  ![web app run on EC2](img-folder/runappec2.png)
+  
+  
 
