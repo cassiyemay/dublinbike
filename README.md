@@ -20,7 +20,6 @@ meeting notes in here https://trello.com/b/KAaZIGR8/dublinbikeproject
   
   
   ![web application outcome](img-folder/web1.png)
-  
   ![web application outcome](img-folder/web2.png)
   
   
