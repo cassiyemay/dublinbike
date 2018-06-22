@@ -8,6 +8,7 @@ meeting notes in here https://trello.com/b/KAaZIGR8/dublinbikeproject
   2. data manaement/stored in DB on AWS
   
   ![database structure](img-folder/database.png)
+  
   3. display bike stations on map
   4. weather information
   5. occupancy information
@@ -16,6 +17,12 @@ meeting notes in here https://trello.com/b/KAaZIGR8/dublinbikeproject
   6. project run on EC2
   
   ![web app run on EC2](img-folder/runappec2.png)
+  
+  
+  ![web application outcome](img-folder/web1.png)
+  
+  ![web application outcome](img-folder/web2.png)
+  
   
   
 
